@@ -4,7 +4,7 @@ from telegram import ForceReply, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from weather import weather
 from system import system_commands
-from speech_recognition import speech_recog
+from speech import speech_recog
 
 
 # Enable logging
