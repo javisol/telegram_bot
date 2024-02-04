@@ -26,6 +26,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         rf"Hi {user.mention_html()}!",
         reply_markup=ForceReply(selective=True),
     )
+async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when an audio is sent."""
+    file_path="/tmp/voice_file.ogg"
+    voice_note = await context.bot.get_file(update.message.voice.file_id)
+    voice_file = await voice_note.download_to_drive(file_path)
+    text=f"Procesando audio..."
+    system_commands.audio_to_wav(file_path)
+    await update.message.reply_text(text)
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
@@ -77,6 +86,9 @@ def main() -> None:
 
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+    # voice handler
+    application.add_handler(MessageHandler(filters.VOICE, audio_command))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
