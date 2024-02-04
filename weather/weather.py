@@ -31,6 +31,7 @@ def get_weather_report():
 
     # Process daily data. The order of variables needs to be the same as requested.
     daily = response.Daily()
+    current_temperature = int(current_temperature_2m)
     daily_temperature_2m_max = int(daily.Variables(0).ValuesAsNumpy()[0])
     daily_temperature_2m_min = int(daily.Variables(1).ValuesAsNumpy()[0])
     daily_apparent_temperature_max = int(daily.Variables(2).ValuesAsNumpy()[0])
@@ -39,7 +40,7 @@ def get_weather_report():
     daily_precipitation_hours = int(daily.Variables(5).ValuesAsNumpy()[0])
     daily_precipitation_probability_max = int(daily.Variables(6).ValuesAsNumpy()[0])
 
-    return(f"La temperatura actual es {current_temperature_2m} grados.  La máxima del día será de {daily_temperature_2m_max} y la mínima de {daily_temperature_2m_min} grados. La sensación térmica será de {daily_apparent_temperature_max} de máxima y de {daily_apparent_temperature_min} de mínima. La probabilidad de lluvia es de {daily_precipitation_probability_max}")
+    return(f"La temperatura actual es {current_temperature} grados.  La máxima del día será de {daily_temperature_2m_max} y la mínima de {daily_temperature_2m_min} grados. La sensación térmica será de {daily_apparent_temperature_max} de máxima y de {daily_apparent_temperature_min} de mínima. La probabilidad de lluvia es de {daily_precipitation_probability_max}")
 
 
 if __name__ == "__main__":
