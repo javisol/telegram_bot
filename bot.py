@@ -4,6 +4,7 @@ from telegram import ForceReply, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from weather import weather
 from system import system_commands
+from speech_recognition import speech_recog
 
 
 # Enable logging
@@ -32,7 +33,8 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     voice_note = await context.bot.get_file(update.message.voice.file_id)
     voice_file = await voice_note.download_to_drive(file_path)
     text=f"Procesando audio..."
-    system_commands.audio_to_wav(file_path)
+    wav_file = system_commands.audio_to_wav(file_path)
+    text = speech_recog.speech_to_text_from_file(wav_file)
     await update.message.reply_text(text)
 
 

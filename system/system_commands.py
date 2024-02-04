@@ -12,8 +12,9 @@ def fortune():
     return result.stdout
 
 def audio_to_wav(file_path):
-    result = subprocess.run([f"ffmpeg -y -hide_banner -loglevel error -i {file_path} /tmp/voice_file.wav"], shell=True, capture_output=True, text=True)
-    return result.stdout
+    output_file = "/tmp/voice_file.wav"
+    result = subprocess.run([f"ffmpeg -y -hide_banner -loglevel error -i {file_path} {output_file}"], shell=True, capture_output=True, text=True)
+    return output_file
 
 
 if __name__ == "__main__":
