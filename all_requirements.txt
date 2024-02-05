@@ -1,4 +1,4 @@
 -r requirements.txt
 -r calendar/requirements.txt
 -r weather/requirements.txt
--r speech_recognition/requirements.txt
+-r speech/requirements.txt
