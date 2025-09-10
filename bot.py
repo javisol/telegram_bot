@@ -40,7 +40,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nIp\nCita\nTiempo\nHabla\n"
+    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nIp\ngeoip\nCita\nTiempo\nHabla\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -56,7 +56,6 @@ async def uptime_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def fwflush_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /fwflush is issued."""
     text=system_commands.firewall_flush()
-    await update.message.reply_text(text)
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /fwflush is issued."""
@@ -67,6 +66,12 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /ip is issued."""
     text=system_commands.ip()
+    await update.message.reply_text(text)
+
+async def geoip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /geoip is issued."""
+    input_text = update.message.text
+    text=system_commands.geoip(input_text)
     await update.message.reply_text(text)
 
 async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -96,6 +101,7 @@ def main() -> None:
     application.add_handler(CommandHandler("fwflush", fwflush_command))
     application.add_handler(CommandHandler("unban", unban_command))
     application.add_handler(CommandHandler("ip", ip_command))
+    application.add_handler(CommandHandler("geoip", geoip_command))
     application.add_handler(CommandHandler("cita", fortune_command))
     application.add_handler(CommandHandler("fortune", fortune_command))
     #weather

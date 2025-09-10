@@ -7,13 +7,18 @@ def uptime():
 def ip():
     return("IP: " + requests.get('https://ifconfig.me').text)
 
+def geoip(input_text):
+    ip = input_text[5:]
+    print(ip)
+    result = subprocess.run([f"ssh reverse geoiplookup {ip}"], shell=True, capture_output=True, text=True)
+    return result.stdout 
+
 def fortune():
     result = subprocess.run(["fortune -a"], shell=True, capture_output=True, text=True)
     return result.stdout
 
 def firewall_flush():
     result = subprocess.run(["ssh reverse sudo fwflush"], shell=True, capture_output=True, text=True)
-    return result.stdout
 
 def firewall_unban(input_text):
     jail_and_ip = input_text[7:] #remove /unban command form input_text
