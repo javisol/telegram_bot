@@ -15,9 +15,17 @@ def firewall_flush():
     result = subprocess.run(["ssh reverse sudo fwflush"], shell=True, capture_output=True, text=True)
     return result.stdout
 
-def firewall_unban():
-    result = subprocess.run(["ssh reverse sudo unban"], shell=True, capture_output=True, text=True)
-    return result.stdout
+def firewall_unban(input_text):
+    params = input_text.split()[1:]
+    print(type(params))
+    print(params)
+    if len(params) == 2:
+        jail_name = params[0]
+        ip = params[1]
+        result = subprocess.run([f"ssh reverse sudo unban {jail_name} {ip}"], shell=True, capture_output=True, text=True)
+    else:
+        result = subprocess.run([f"ssh reverse sudo unban {params}"], shell=True, capture_output=True, text=True)
+    return result.stdout 
 
 def audio_to_wav(file_path):
     output_file = "/tmp/voice_file.wav"
