@@ -40,7 +40,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nIp\nFortune\nTiempo\nTalk\n"
+    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nIp\nFortune\nTiempo\nTalk\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
