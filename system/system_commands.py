@@ -15,7 +15,7 @@ def firewall_flush():
     result = subprocess.run(["ssh reverse sudo fwflush"], shell=True, capture_output=True, text=True)
     return result.stdout
 
-def firewall_flush():
+def firewall_unban():
     result = subprocess.run(["ssh reverse sudo unban"], shell=True, capture_output=True, text=True)
     return result.stdout
 
