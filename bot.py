@@ -40,7 +40,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nIp\nFortune\nTiempo\n"
+    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nIp\nFortune\nTiempo\nTalk\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -51,6 +51,17 @@ async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def uptime_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /uptime is issued."""
     text=system_commands.uptime()
+    await update.message.reply_text(text)
+
+async def fwflush_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /fwflush is issued."""
+    text=system_commands.firewall_flush()
+    await update.message.reply_text(text)
+
+async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /fwflush is issued."""
+    input_text = update.message.text
+    text=system_commands.unban(input_text)
     await update.message.reply_text(text)
 
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -67,6 +78,11 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     await update.message.reply_text(update.message.text)
 
+async def talk_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Echo the user message."""
+    text = update.message.text
+    audio_file=system_commands.talk(text)
+
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
@@ -77,11 +93,13 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     #system
     application.add_handler(CommandHandler("uptime", uptime_command))
+    application.add_handler(CommandHandler("fwflush", fwflush_command))
     application.add_handler(CommandHandler("ip", ip_command))
     application.add_handler(CommandHandler("fortune", fortune_command))
     #weather
     application.add_handler(CommandHandler("weather", weather_command))
     application.add_handler(CommandHandler("tiempo", weather_command))
+    application.add_handler(CommandHandler("habla", talk_command))
     #help
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("ayuda", help_command))
