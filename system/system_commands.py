@@ -9,7 +9,6 @@ def ip():
 
 def geoip(input_text):
     ip = input_text[5:]
-    print(ip)
     result = subprocess.run([f"ssh reverse geoiplookup {ip}"], shell=True, capture_output=True, text=True)
     return result.stdout 
 
@@ -23,6 +22,11 @@ def firewall_flush():
 def firewall_unban(input_text):
     jail_and_ip = input_text[7:] #remove /unban command form input_text
     result = subprocess.run([f"ssh reverse sudo unban {jail_and_ip}"], shell=True, capture_output=True, text=True)
+    return result.stdout 
+
+def firewall_fail2ban(input_text):
+    start_stop = input_text[10:] #remove /unban command form input_text
+    result = subprocess.run([f"ssh reverse sudo f2b {start_stop}"], shell=True, capture_output=True, text=True)
     return result.stdout 
 
 def audio_to_wav(file_path):

@@ -40,7 +40,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nIp\ngeoip\nCita\nTiempo\nHabla\n"
+    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nfail2ban\nIp\ngeoip\nCita\nTiempo\nHabla\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -61,6 +61,12 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Send a message when the command /fwflush is issued."""
     input_text = update.message.text
     text=system_commands.firewall_unban(input_text)
+    await update.message.reply_text(text)
+
+async def fail2ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /fail2ban is issued."""
+    input_text = update.message.text
+    text=system_commands.firewall_fail2ban(input_text)
     await update.message.reply_text(text)
 
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,6 +106,7 @@ def main() -> None:
     application.add_handler(CommandHandler("uptime", uptime_command))
     application.add_handler(CommandHandler("fwflush", fwflush_command))
     application.add_handler(CommandHandler("unban", unban_command))
+    application.add_handler(CommandHandler("fail2ban", fail2ban_command))
     application.add_handler(CommandHandler("ip", ip_command))
     application.add_handler(CommandHandler("geoip", geoip_command))
     application.add_handler(CommandHandler("cita", fortune_command))
