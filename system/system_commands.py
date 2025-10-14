@@ -1,3 +1,4 @@
+import re
 import subprocess
 import requests
 
@@ -44,6 +45,18 @@ def talk(input_text):
     #result = subprocess.run([f"espeak -s135 -ves --stdout \"{input_text}\" |oggenc -Q -o {output_file} -"], shell=True, capture_output=True, text=True)
     input_text = input_text[7:]
     result = subprocess.run([f"/usr/local/bin/assistant/ratoncio_send_voice \"{input_text}\""], shell=True, capture_output=True, text=True)
+
+def reminder(input_text):
+    send_message_command = "/usr/local/bin/assistant/ratoncio_send_msg"
+    input_text = input_text[8:]
+    time, message = input_text.split(None, 1)
+    if re.match(r'^\d{1,2}:\d{2}\s', input_text):
+        result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-calendar", f'{time}:00', send_message_command, message])
+    elif re.match(r'^\d+[smh]\s', input_text):
+        result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-active", time, send_message_command, message])
+    else:
+        result = "Parse error in time format"
+    return result
 
 
 if __name__ == "__main__":
