@@ -98,6 +98,7 @@ async def remind_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Send a message at a time"""
     text = update.message.text
     response = system_commands.reminder(text)
+    await update.message.reply_text(response)
 
 
 def main() -> None:
