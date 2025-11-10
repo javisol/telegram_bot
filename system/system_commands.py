@@ -47,12 +47,13 @@ def talk(input_text):
     result = subprocess.run([f"/usr/local/bin/assistant/ratoncio_send_voice \"{input_text}\""], shell=True, capture_output=True, text=True)
 
 def reminder(input_text):
+    help_message = f"/remind hh:mm message\n/remind XXm message, for a message after XX minutes (s, m and h for seconds, minutes and hours)"
     send_message_command = "/usr/local/bin/assistant/ratoncio_send_msg"
     try:
         input_text = input_text[8:]
         time, message = input_text.split(None, 1)
     except Exception:
-        return f"/remind hh:mm message\n/remind XXm message, for a message after XX minutes (s, m and h for seconds, minutes and hours)"
+        return help_message
     # hh:mm match
     if re.match(r'^\d{1,2}:\d{2}\s', input_text):
         result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-calendar", f'{time}:00', send_message_command, message])
@@ -60,7 +61,7 @@ def reminder(input_text):
     elif re.match(r'^\d+[smh]\s', input_text):
         result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-active", time, send_message_command, message])
     else:
-        result = "Parse error in time format"
+        result = f"Parse error in time format\n" + help_message
     return result
 
 
