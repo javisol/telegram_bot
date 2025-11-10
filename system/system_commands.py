@@ -52,14 +52,17 @@ def reminder(input_text):
     try:
         input_text = input_text[8:]
         time, message = input_text.split(None, 1)
+        message = "\u23F0" + message
     except Exception:
         return help_message
     # hh:mm match
     if re.match(r'^\d{1,2}:\d{2}\s', input_text):
-        result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-calendar", f'{time}:00', send_message_command, message])
+        subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-calendar", f'{time}:00', send_message_command, message])
+        result = "OK"
     # after X seconds, minutes or hours match
     elif re.match(r'^\d+[smh]\s', input_text):
-        result = subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-active", time, send_message_command, message])
+        subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-active", time, send_message_command, message])
+        result = "OK"
     else:
         result = f"Parse error in time format\n" + help_message
     return result
