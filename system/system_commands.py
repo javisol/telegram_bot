@@ -52,7 +52,7 @@ def reminder(input_text):
     try:
         input_text = input_text[8:]
         time, message = input_text.split(None, 1)
-        message = "\u23F0" + message
+        message = "\u23F0 " + message # clock emoji
     except Exception:
         return help_message
     # hh:mm match
