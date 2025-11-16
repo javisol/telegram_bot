@@ -1,6 +1,8 @@
 import re
 import subprocess
 import requests
+import json
+import random
 
 def uptime():
     return(subprocess.check_output("uptime").decode('utf-8'))
@@ -67,6 +69,34 @@ def reminder(input_text):
         result = f"Parse error in time format\n" + help_message
     return result
 
+def oblique():
+    ob_st_file = '/data/repositories/telegram_bot/oblique_strategies/oblique_strategies_2015.json'
+    try:
+        with open(ob_st_file, 'r') as file:
+            # Load the JSON data as a Python list
+            data_list = json.load(file)
+
+            if isinstance(data_list, list) and data_list: # Check if it's a non-empty list
+                # Use random.choice() to pick one random dictionary from the list
+                random_entry = random.choice(data_list)
+                
+                # Extract the value from the randomly selected dictionary
+                if "card" in random_entry:
+                    result = random_entry["card"]
+                else:
+                    result = "Error: The random entry did not have a 'card' key."
+                    
+            elif not data_list:
+                result = "Error: The JSON list is empty."
+            else:
+                result = "Error: JSON file did not contain a list of objects."
+
+    except json.JSONDecodeError:
+        result = f"Error: Could not decode JSON from the file '{ob_st_file}'. Check file format."
+    except Exception as e:
+        result = f"An unexpected error occurred: {e}"
+
+    return result 
 
 if __name__ == "__main__":
     print(uptime())

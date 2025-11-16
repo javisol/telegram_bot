@@ -40,7 +40,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nfail2ban\nIp\ngeoip\nCita\nTiempo\nHabla\nRemind\n"
+    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nfail2ban\nIp\ngeoip\nCita\nTiempo\nHabla\nRemind\nOblique (ob)\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,6 +100,12 @@ async def remind_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     response = system_commands.reminder(text)
     await update.message.reply_text(response)
 
+async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send an oblique strategy sentence"""
+    text = update.message.text
+    response = system_commands.oblique()
+    await update.message.reply_text(response)
+
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
@@ -124,6 +130,8 @@ def main() -> None:
     application.add_handler(CommandHandler("talk", talk_command))
     application.add_handler(CommandHandler("recuerda", remind_command))
     application.add_handler(CommandHandler("remind", remind_command))
+    application.add_handler(CommandHandler("oblique", oblique_command))
+    application.add_handler(CommandHandler("ob", oblique_command))
     #help
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("ayuda", help_command))
