@@ -4,49 +4,116 @@ import requests
 import json
 import random
 
-def uptime():
-    return(subprocess.check_output("uptime").decode('utf-8'))
+def uptime() -> str:
+    """Display server uptime.
+    
+    Returns:
+        Server uptime information
+    """
+    return subprocess.check_output(["uptime"]).decode('utf-8')
 
 def ip():
     return("IP: " + requests.get('https://ifconfig.me').text)
 
-def geoip(input_text):
+def geoip(input_text: str) -> str:
+    """Perform geoIP lookup for a given IP address.
+    
+    Args:
+        input_text: User input containing the IP address
+        
+    Returns:
+        GeoIP lookup result
+    """
     ip = input_text[5:]
-    result = subprocess.run([f"ssh reverse geoiplookup {ip}"], shell=True, capture_output=True, text=True)
-    return result.stdout 
+    result = subprocess.run(
+        ["ssh", "reverse", "geoiplookup", ip],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout
 
 def fortune():
     result = subprocess.run(["fortune -a"], shell=True, capture_output=True, text=True)
     return result.stdout
 
-def firewall_flush():
-    result = subprocess.run(["ssh reverse sudo fwflush"], shell=True, capture_output=True, text=True)
+def firewall_flush() -> str:
+    """Flush firewall rules.
+    
+    Returns:
+        Result of the firewall flush operation
+    """
+    result = subprocess.run(
+        ["ssh", "reverse", "sudo", "fwflush"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout
 
-def firewall_unban(input_text):
-    jail_and_ip = input_text[7:] #remove /unban command form input_text
-    result = subprocess.run([f"ssh reverse sudo unban {jail_and_ip}"], shell=True, capture_output=True, text=True)
-    return result.stdout 
+def firewall_unban(input_text: str) -> str:
+    """Unban a specific IP from fail2ban.
+    
+    Args:
+        input_text: User input containing the IP address
+        
+    Returns:
+        Result of the unban operation
+    """
+    jail_and_ip = input_text[7:]
+    result = subprocess.run(
+        ["ssh", "reverse", "sudo", "unban", jail_and_ip],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout
 
-def firewall_fail2ban(input_text):
-    start_stop = input_text[10:] #remove /unban command form input_text
-    result = subprocess.run([f"ssh reverse sudo f2b {start_stop}"], shell=True, capture_output=True, text=True)
-    return result.stdout 
+def firewall_fail2ban(input_text: str) -> str:
+    """Start or stop fail2ban service.
+    
+    Args:
+        input_text: User input containing the action (start/stop)
+        
+    Returns:
+        Result of the fail2ban operation
+    """
+    start_stop = input_text[10:]
+    result = subprocess.run(
+        ["ssh", "reverse", "sudo", "f2b", start_stop],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout
 
-def audio_to_wav(file_path):
+def audio_to_wav(file_path: str) -> str:
+    """Convert audio file to WAV format.
+    
+    Args:
+        file_path: Path to the input audio file
+        
+    Returns:
+        Path to the converted WAV file
+    """
     output_file = "/tmp/voice_file.wav"
-    result = subprocess.run([f"ffmpeg -y -hide_banner -loglevel error -i {file_path} {output_file}"], shell=True, capture_output=True, text=True)
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", file_path, output_file],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg conversion failed: {result.stderr}")
     return output_file
 
-def audio_to_wav(file_path):
-    output_file = "/tmp/voice_file.wav"
-    result = subprocess.run([f"ffmpeg -y -hide_banner -loglevel error -i {file_path} {output_file}"], shell=True, capture_output=True, text=True)
-    return output_file
-
-def talk(input_text):
-    #output_file = "/tmp/voice_file.ogg"
-    #result = subprocess.run([f"espeak -s135 -ves --stdout \"{input_text}\" |oggenc -Q -o {output_file} -"], shell=True, capture_output=True, text=True)
+def talk(input_text: str) -> None:
+    """Send a voice message response.
+    
+    Args:
+        input_text: User input containing the message text
+    """
     input_text = input_text[7:]
-    result = subprocess.run([f"/usr/local/bin/assistant/ratoncio_send_voice \"{input_text}\""], shell=True, capture_output=True, text=True)
+    result = subprocess.run(
+        ["/usr/local/bin/assistant/ratoncio_send_voice", input_text],
+        capture_output=True,
+        text=True
+    )
 
 def reminder(input_text):
     help_message = f"/remind hh:mm message\n/remind XXm message, for a message after XX minutes (s, m and h for seconds, minutes and hours)"
