@@ -43,7 +43,7 @@ def query_llm(prompt: str) -> str:
                 "temperature": 0.7,
                 "max_tokens": 2048
             },
-            timeout=300
+            timeout=30
         )
         
         response.raise_for_status()
@@ -87,7 +87,7 @@ def query_llm_streaming(prompt: str) -> str:
                 "temperature": 0.7,
                 "max_tokens": 2048
             },
-            timeout=300
+            timeout=30
         )
         
         response.raise_for_status()
