@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from weather import weather
 from system import system_commands
 from speech import speech_recog
+from llm import llm_api
 
 
 # Enable logging
@@ -20,91 +21,220 @@ logger = logging.getLogger(__name__)
 # context.
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /start is issued."""
+    """Handle the /start command.
+    
+    Sends a welcome message to the user when they start the bot.
+    
+    Args:
+        update: Telegram update object containing user information
+        context: Context object containing bot reference
+    """
     user = update.effective_user
 
     await update.message.reply_html(
         rf"Hi {user.mention_html()}!",
         reply_markup=ForceReply(selective=True),
     )
+
 async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when an audio is sent."""
-    file_path="/tmp/voice_file.ogg"
+    """Process voice messages sent by users.
+    
+    Downloads the voice file, converts it to WAV format, performs speech-to-text
+    recognition, and sends the transcribed text back to the user.
+    
+    Args:
+        update: Telegram update object containing voice message
+        context: Context object containing bot reference
+    """
+    file_path = "/tmp/voice_file.ogg"
     voice_note = await context.bot.get_file(update.message.voice.file_id)
     voice_file = await voice_note.download_to_drive(file_path)
-    text=f"Procesando audio..."
+    text = f"Procesando audio..."
     wav_file = system_commands.audio_to_wav(file_path)
     text = speech_recog.speech_to_text_from_file(wav_file)
     await update.message.reply_text(text)
 
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /help is issued."""
-    text="Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nfail2ban\nIp\ngeoip\nCita\nTiempo\nHabla\nRemind\nOblique (ob)\n"
+    """Handle the /help command.
+    
+    Sends a list of available commands to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = "Comandos:\n--------------\nAyuda\nUptime\nfwflush\nunban\nfail2ban\nIp\ngeoip\nCita\nTiempo\nHabla\nRemind\nOblique (ob)\nAI\n"
     await update.message.reply_text(text)
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /weather is issued."""
-    text=weather.get_weather_report()
+    """Handle the /weather command.
+    
+    Retrieves and sends the current weather report to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = weather.get_weather_report()
     await update.message.reply_text(text)
 
 async def uptime_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /uptime is issued."""
-    text=system_commands.uptime()
+    """Handle the /uptime command.
+    
+    Retrieves and sends the server uptime information to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = system_commands.uptime()
     await update.message.reply_text(text)
 
 async def fwflush_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /fwflush is issued."""
-    text=system_commands.firewall_flush()
+    """Handle the /fwflush command.
+    
+    Flushes firewall rules and sends the result to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = system_commands.firewall_flush()
+    await update.message.reply_text(text)
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /fwflush is issued."""
+    """Handle the /unban command.
+    
+    Unbans a specific IP from fail2ban based on user input.
+    
+    Args:
+        update: Telegram update object containing the IP address
+        context: Context object containing bot reference
+    """
     input_text = update.message.text
-    text=system_commands.firewall_unban(input_text)
+    text = system_commands.firewall_unban(input_text)
     await update.message.reply_text(text)
 
 async def fail2ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /fail2ban is issued."""
+    """Handle the /fail2ban command.
+    
+    Starts or stops the fail2ban service based on user input.
+    
+    Args:
+        update: Telegram update object containing the action (start/stop)
+        context: Context object containing bot reference
+    """
     input_text = update.message.text
-    text=system_commands.firewall_fail2ban(input_text)
+    text = system_commands.firewall_fail2ban(input_text)
     await update.message.reply_text(text)
 
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /ip is issued."""
-    text=system_commands.ip()
+    """Handle the /ip command.
+    
+    Retrieves and sends the current IP address to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = system_commands.ip()
     await update.message.reply_text(text)
 
 async def geoip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /geoip is issued."""
+    """Handle the /geoip command.
+    
+    Performs a geoIP lookup for the specified IP address.
+    
+    Args:
+        update: Telegram update object containing the IP address
+        context: Context object containing bot reference
+    """
     input_text = update.message.text
-    text=system_commands.geoip(input_text)
+    text = system_commands.geoip(input_text)
     await update.message.reply_text(text)
 
 async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /cita is issued."""
-    text=system_commands.fortune()
+    """Handle the /cita command.
+    
+    Retrieves and sends a random fortune message to the user.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
+    text = system_commands.fortune()
     await update.message.reply_text(text)
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
+    """Handle non-command text messages.
+    
+    Echoes the user's message back to them.
+    
+    Args:
+        update: Telegram update object containing the message
+        context: Context object containing bot reference
+    """
     await update.message.reply_text(update.message.text)
 
 async def talk_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
+    """Handle the /talk command.
+    
+    Sends a voice message response based on user input.
+    
+    Args:
+        update: Telegram update object containing the message
+        context: Context object containing bot reference
+    """
     text = update.message.text
-    audio_file=system_commands.talk(text)
+    audio_file = system_commands.talk(text)
 
 async def remind_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message at a time"""
+    """Handle the /remind command.
+    
+    Sets a reminder for a specific time or duration based on user input.
+    
+    Args:
+        update: Telegram update object containing time and message
+        context: Context object containing bot reference
+    """
     text = update.message.text
     response = system_commands.reminder(text)
     await update.message.reply_text(response)
 
 async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send an oblique strategy sentence"""
+    """Handle the /oblique command.
+    
+    Retrieves and sends a random oblique strategy card.
+    
+    Args:
+        update: Telegram update object
+        context: Context object containing bot reference
+    """
     text = update.message.text
     response = system_commands.oblique()
     await update.message.reply_text(response)
+
+
+async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /ai command.
+    
+    Forwards the user's query to the LLM API at 192.168.0.221:11444
+    and returns the AI's response.
+    
+    Args:
+        update: Telegram update object containing the message
+        context: Context object containing bot reference
+    """
+    prompt = update.message.text
+    
+    try:
+        logger.info(f"Processing AI query: {prompt[:50]}...")
+        response = llm_api.query_llm(prompt)
+        await update.message.reply_text(response)
+    except Exception as e:
+        error_msg = f"Error communicating with AI: {str(e)}"
+        logger.error(error_msg)
+        await update.message.reply_text(error_msg)
 
 
 def main() -> None:
@@ -132,6 +262,8 @@ def main() -> None:
     application.add_handler(CommandHandler("remind", remind_command))
     application.add_handler(CommandHandler("oblique", oblique_command))
     application.add_handler(CommandHandler("ob", oblique_command))
+    # AI
+    application.add_handler(CommandHandler("ai", ai_command))
     #help
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("ayuda", help_command))
