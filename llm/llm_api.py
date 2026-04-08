@@ -28,12 +28,16 @@ def query_llm(prompt: str) -> str:
     try:
         logger.info(f"Sending query to LLM API: {prompt[:50]}...")
         
+        # System prompt to identify the AI
+        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses."
+        
         # Make POST request to the LLM API
         response = requests.post(
             f"{LLM_API_URL}/v1/chat/completions",
             json={
                 "model": "default",
                 "messages": [
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
@@ -68,11 +72,15 @@ def query_llm_streaming(prompt: str) -> str:
     try:
         logger.info(f"Sending streaming query to LLM API: {prompt[:50]}...")
         
+        # System prompt to identify the AI
+        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses."
+        
         response = requests.post(
             f"{LLM_API_URL}/v1/chat/completions",
             json={
                 "model": "default",
                 "messages": [
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 "stream": True,
