@@ -56,7 +56,7 @@ def query_llm(prompt: str) -> str:
         
     except requests.RequestException as e:
         logger.error(f"Error communicating with LLM API: {e}")
-        raise
+        return "AI LLM is off"
 
 
 def query_llm_streaming(prompt: str) -> str:
@@ -114,4 +114,4 @@ def query_llm_streaming(prompt: str) -> str:
         
     except requests.RequestException as e:
         logger.error(f"Error communicating with LLM API: {e}")
-        raise
+        return "AI LLM is off"
