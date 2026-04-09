@@ -29,7 +29,7 @@ def query_llm(prompt: str) -> str:
         logger.info(f"Sending query to LLM API: {prompt[:50]}...")
         
         # System prompt to identify the AI
-        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses."
+        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query."
         
         # Make POST request to the LLM API
         response = requests.post(
@@ -73,7 +73,7 @@ def query_llm_streaming(prompt: str) -> str:
         logger.info(f"Sending streaming query to LLM API: {prompt[:50]}...")
         
         # System prompt to identify the AI
-        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses."
+        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query."
         
         response = requests.post(
             f"{LLM_API_URL}/v1/chat/completions",
