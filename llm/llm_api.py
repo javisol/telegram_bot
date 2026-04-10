@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # LLM API configuration - retrieved from environment variable
-LLM_API_URL = os.environ.get("LLM_API_URL", "http://192.168.0.221:11444")
+LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
 
 
 def query_llm(prompt: str) -> str:
