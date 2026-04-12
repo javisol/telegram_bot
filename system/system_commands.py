@@ -90,7 +90,7 @@ def geoip(input_text: str) -> str:
         SubprocessError: If SSH command fails
     """
     try:
-        ip = input_text[5:].strip()
+        ip = input_text[7:].strip()
         if not ip:
             raise ValidationError("IP address cannot be empty")
         if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ip):
