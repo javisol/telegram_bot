@@ -5,6 +5,7 @@ import json
 import random
 import os
 from typing import Optional
+from validators import IPValidator, TimeValidator, InputValidator, ValidationError
 
 class SystemCommandError(Exception):
     """Base exception for system command errors."""
@@ -90,11 +91,10 @@ def geoip(input_text: str) -> str:
         SubprocessError: If SSH command fails
     """
     try:
-        ip = input_text[7:].strip()
-        if not ip:
-            raise ValidationError("IP address cannot be empty")
-        if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ip):
-            raise ValidationError(f"Invalid IP address format: {ip}")
+        # Extract and validate IP using IPValidator
+        ip = IPValidator.extract_ip(input_text)
+        # Sanitize IP to prevent command injection - strip whitespace and quotes
+        ip = ip.strip().strip('"').strip("'")
         result = _safe_subprocess_run(
             ["ssh", "reverse", "geoiplookup", ip],
             timeout=30
@@ -155,13 +155,12 @@ def firewall_unban(input_text: str) -> str:
         SubprocessError: If SSH command fails
     """
     try:
-        jail_and_ip = input_text[7:].strip()
-        if not jail_and_ip:
-            raise ValidationError("IP address cannot be empty")
-        if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', jail_and_ip):
-            raise ValidationError(f"Invalid IP address format: {jail_and_ip}")
+        # Extract and validate IP using IPValidator
+        ip = IPValidator.extract_ip(input_text)
+        # Sanitize IP to prevent command injection - strip whitespace and quotes
+        ip = ip.strip().strip('"').strip("'")
         result = _safe_subprocess_run(
-            ["ssh", "reverse", "sudo", "unban", jail_and_ip],
+            ["ssh", "reverse", "sudo", "unban", ip],
             timeout=30
         )
         return result.stdout
@@ -189,6 +188,8 @@ def firewall_fail2ban(input_text: str) -> str:
             raise ValidationError("Action cannot be empty")
         if start_stop not in ["start", "stop"]:
             raise ValidationError(f"Invalid action. Use 'start' or 'stop'. Got: {start_stop}")
+        # Sanitize start_stop to prevent command injection
+        start_stop = start_stop.strip().strip('"').strip("'")
         result = _safe_subprocess_run(
             ["ssh", "reverse", "sudo", "f2b", start_stop],
             timeout=30
@@ -281,6 +282,12 @@ def reminder(input_text: str) -> Optional[str]:
     except (IndexError, ValueError):
         return help_message
     
+    # Validate time format using TimeValidator
+    try:
+        TimeValidator.validate(time)
+    except ValidationError as e:
+        return f"Invalid time format: {e.message}\n{help_message}"
+    
     # hh:mm match
     if re.match(r'^\d{1,2}:\d{2}\s', input_text):
         try:
@@ -316,7 +323,8 @@ def oblique() -> str:
         FileNotFoundError: If JSON file does not exist
         json.JSONDecodeError: If JSON file is malformed
     """
-    ob_st_file = '/data/repositories/telegram_bot/oblique_strategies/oblique_strategies_2015.json'
+    ob_st_file = os.environ.get("OBLIQUE_STRATEGIES_FILE",
+                               "/data/repositories/telegram_bot/oblique_strategies/oblique_strategies_2015.json")
     
     if not os.path.exists(ob_st_file):
         raise FileNotFoundError(f"Oblique strategies file not found: {ob_st_file}")

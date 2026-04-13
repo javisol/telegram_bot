@@ -9,6 +9,10 @@ import locale
 import caldav
 from caldav.elements import dav, cdav
 from event import Event
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class CalendarError(Exception):

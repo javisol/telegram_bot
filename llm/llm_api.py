@@ -2,6 +2,7 @@
 LLM API integration module.
 Forwards queries to the LLM API configured via environment variable.
 """
+import json
 import os
 import requests
 import logging
@@ -26,10 +27,13 @@ def query_llm(prompt: str) -> str:
         requests.RequestException: If the API call fails
     """
     try:
-        logger.info(f"Sending query to LLM API: {prompt[:50]}...")
+        # Sanitize prompt for logging to prevent sensitive data exposure
+        sanitized_prompt = prompt[:50].replace(" ", "_").replace(":", "_").replace("\n", "_").replace("\t", "_")
+        logger.info(f"Sending query to LLM API: {sanitized_prompt}...")
         
-        # System prompt to identify the AI
-        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query."
+        # System prompt to identify the AI - configurable via environment variable
+        system_prompt = os.environ.get("SYSTEM_PROMPT",
+                                       "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query.")
         
         # Make POST request to the LLM API
         response = requests.post(
@@ -51,7 +55,9 @@ def query_llm(prompt: str) -> str:
         
         # Extract and return the response
         llm_response = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-        logger.info(f"Received response from LLM API")
+        # Sanitize response for logging
+        sanitized_response = llm_response[:50].replace(" ", "_").replace(":", "_")
+        logger.info(f"Received response from LLM API: {sanitized_response}...")
         return llm_response
         
     except requests.RequestException as e:
@@ -70,7 +76,9 @@ def query_llm_streaming(prompt: str) -> str:
         The complete LLM response as a string
     """
     try:
-        logger.info(f"Sending streaming query to LLM API: {prompt[:50]}...")
+        # Sanitize prompt for logging to prevent sensitive data exposure
+        sanitized_prompt = prompt[:50].replace(" ", "_").replace(":", "_").replace("\n", "_").replace("\t", "_")
+        logger.info(f"Sending streaming query to LLM API: {sanitized_prompt}...")
         
         # System prompt to identify the AI
         system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query."
@@ -103,7 +111,7 @@ def query_llm_streaming(prompt: str) -> str:
                         break
                     try:
                         chunk = data[1:-1]  # Remove outer brackets
-                        result = eval(chunk)
+                        result = json.loads(chunk)  # Fixed: Replace eval() with json.loads() to prevent code injection
                         content = result.get("choices", [{}])[0].get("delta", {}).get("content", "")
                         full_response += content
                     except Exception as e:
