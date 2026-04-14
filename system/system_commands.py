@@ -27,7 +27,10 @@ class ValidationError(SystemCommandError):
     """Raised when input validation fails."""
     pass
 
-def _safe_subprocess_run(cmd: list[str], timeout: int = 30) -> subprocess.CompletedProcess:
+# Default timeout for subprocess calls
+DEFAULT_TIMEOUT = 30
+
+def _safe_subprocess_run(cmd: list[str], timeout: int = DEFAULT_TIMEOUT) -> subprocess.CompletedProcess:
     """Safely run a subprocess command with timeout.
     
     Args:
@@ -50,6 +53,32 @@ def _safe_subprocess_run(cmd: list[str], timeout: int = 30) -> subprocess.Comple
     except Exception as e:
         raise SubprocessError(f"Subprocess execution failed: {e}")
 
+def _sanitize_subprocess_input(input_text: str) -> str:
+    """Sanitize input for subprocess commands to prevent injection attacks.
+    
+    Args:
+        input_text: Raw user input
+        
+    Returns:
+        Sanitized string safe for subprocess execution
+        
+    Raises:
+        ValidationError: If input contains dangerous characters
+    """
+    # Strip whitespace
+    sanitized = input_text.strip()
+    
+    # Remove common shell metacharacters that could cause injection
+    dangerous_patterns = [';', '|', '&', '$', '`', '(', ')', '[', ']', '{', '}', '\\', '"', "'"]
+    for pattern in dangerous_patterns:
+        sanitized = sanitized.replace(pattern, '')
+    
+    # Limit length to prevent DoS
+    if len(sanitized) > 255:
+        sanitized = sanitized[:255]
+    
+    return sanitized
+
 def uptime() -> str:
     """Display server uptime.
     
@@ -71,7 +100,7 @@ def ip() -> str:
         NetworkError: If network request fails
     """
     try:
-        response = requests.get('https://ifconfig.me', timeout=10)
+        response = requests.get('https://ifconfig.me', timeout=DEFAULT_TIMEOUT)
         response.raise_for_status()
         return "IP: " + response.text
     except requests.RequestException as e:
@@ -93,11 +122,11 @@ def geoip(input_text: str) -> str:
     try:
         # Extract and validate IP using IPValidator
         ip = IPValidator.extract_ip(input_text)
-        # Sanitize IP to prevent command injection - strip whitespace and quotes
-        ip = ip.strip().strip('"').strip("'")
+        # Sanitize IP to prevent command injection
+        ip = _sanitize_subprocess_input(ip)
         result = _safe_subprocess_run(
             ["ssh", "reverse", "geoiplookup", ip],
-            timeout=30
+            timeout=DEFAULT_TIMEOUT
         )
         return result.stdout
     except ValidationError as e:
@@ -135,7 +164,7 @@ def firewall_flush() -> str:
     try:
         result = _safe_subprocess_run(
             ["ssh", "reverse", "sudo", "fwflush"],
-            timeout=30
+            timeout=DEFAULT_TIMEOUT
         )
         return result.stdout
     except SubprocessError as e:
@@ -157,11 +186,11 @@ def firewall_unban(input_text: str) -> str:
     try:
         # Extract and validate IP using IPValidator
         ip = IPValidator.extract_ip(input_text)
-        # Sanitize IP to prevent command injection - strip whitespace and quotes
-        ip = ip.strip().strip('"').strip("'")
+        # Sanitize IP to prevent command injection
+        ip = _sanitize_subprocess_input(ip)
         result = _safe_subprocess_run(
             ["ssh", "reverse", "sudo", "unban", ip],
-            timeout=30
+            timeout=DEFAULT_TIMEOUT
         )
         return result.stdout
     except ValidationError as e:
@@ -189,10 +218,10 @@ def firewall_fail2ban(input_text: str) -> str:
         if start_stop not in ["start", "stop"]:
             raise ValidationError(f"Invalid action. Use 'start' or 'stop'. Got: {start_stop}")
         # Sanitize start_stop to prevent command injection
-        start_stop = start_stop.strip().strip('"').strip("'")
+        start_stop = _sanitize_subprocess_input(start_stop)
         result = _safe_subprocess_run(
             ["ssh", "reverse", "sudo", "f2b", start_stop],
-            timeout=30
+            timeout=DEFAULT_TIMEOUT
         )
         return result.stdout
     except ValidationError as e:
@@ -222,13 +251,13 @@ def audio_to_wav(file_path: str) -> str:
             ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", file_path, output_file],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=DEFAULT_TIMEOUT * 2  # Allow more time for ffmpeg
         )
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg conversion failed: {result.stderr}")
         return output_file
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"ffmpeg conversion timed out after 60s")
+        raise RuntimeError(f"ffmpeg conversion timed out after {DEFAULT_TIMEOUT * 2}s")
     except Exception as e:
         raise RuntimeError(f"ffmpeg conversion failed: {e}")
 
@@ -248,11 +277,13 @@ def talk(input_text: str) -> None:
             raise ValidationError("Message cannot be empty")
         if len(input_text) > 1000:
             raise ValidationError("Message too long (max 1000 characters)")
+        # Sanitize input to prevent injection
+        input_text = _sanitize_subprocess_input(input_text)
         result = subprocess.run(
             ["/usr/local/bin/assistant/ratoncio_send_voice", input_text],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=DEFAULT_TIMEOUT
         )
     except ValidationError as e:
         raise ValidationError(f"Voice message failed: {e}")
@@ -292,7 +323,7 @@ def reminder(input_text: str) -> Optional[str]:
     if re.match(r'^\d{1,2}:\d{2}\s', input_text):
         try:
             subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-calendar", f'{time}:00', send_message_command, message],
-                         timeout=30)
+                         timeout=DEFAULT_TIMEOUT)
             return "OK"
         except subprocess.TimeoutExpired:
             raise SubprocessError("Reminder setup timed out")
@@ -303,7 +334,7 @@ def reminder(input_text: str) -> Optional[str]:
     elif re.match(r'^\d+[smh]\s', input_text):
         try:
             subprocess.run(["sudo", "/usr/bin/systemd-run", "--on-active", time, send_message_command, message],
-                         timeout=30)
+                         timeout=DEFAULT_TIMEOUT)
             return "OK"
         except subprocess.TimeoutExpired:
             raise SubprocessError("Reminder setup timed out")

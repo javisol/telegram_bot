@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # LLM API configuration - retrieved from environment variable
+# Default to HTTPS for external services, HTTP for internal Docker network
 LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
 
 
@@ -34,6 +35,10 @@ def query_llm(prompt: str) -> str:
         # System prompt to identify the AI - configurable via environment variable
         system_prompt = os.environ.get("SYSTEM_PROMPT",
                                        "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query.")
+        
+        # Warn if using HTTP for external services
+        if not LLM_API_URL.startswith("https://") and not LLM_API_URL.startswith("http://rtn:"):
+            logger.warning(f"LLM API using HTTP: {LLM_API_URL}")
         
         # Make POST request to the LLM API
         response = requests.post(
@@ -81,7 +86,8 @@ def query_llm_streaming(prompt: str) -> str:
         logger.info(f"Sending streaming query to LLM API: {sanitized_prompt}...")
         
         # System prompt to identify the AI
-        system_prompt = "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query."
+        system_prompt = os.environ.get("SYSTEM_PROMPT",
+                                     "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query.")
         
         response = requests.post(
             f"{LLM_API_URL}/v1/chat/completions",

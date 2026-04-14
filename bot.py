@@ -218,8 +218,7 @@ async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /ai command.
     
-    Forwards the user's query to the LLM API at 192.168.0.221:11444
-    and returns the AI's response.
+    Forwards the user's query to the LLM API and returns the AI's response.
     
     Args:
         update: Telegram update object containing the message
@@ -227,8 +226,21 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     """
     prompt = update.message.text
     
+    # Validate input length to prevent DoS
+    MAX_PROMPT_LENGTH = 4096
+    if len(prompt) > MAX_PROMPT_LENGTH:
+        await update.message.reply_text(
+            f"Prompt too long. Maximum length is {MAX_PROMPT_LENGTH} characters. "
+            f"Your prompt was {len(prompt)} characters.",
+            parse_mode="Markdown"
+        )
+        return
+    
+    # Sanitize prompt for logging
+    sanitized_prompt = prompt[:50].replace(" ", "_").replace(":", "_").replace("\n", "_").replace("\t", "_")
+    
     try:
-        logger.info(f"Processing AI query: {prompt[:50]}...")
+        logger.info(f"Processing AI query: {sanitized_prompt}...")
         response = llm_api.query_llm(prompt)
         await update.message.reply_text(response)
     except Exception as e:

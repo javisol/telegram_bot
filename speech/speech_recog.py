@@ -13,10 +13,10 @@ def speech_to_text_from_file(file_path) -> str:
         return recognizer.recognize_google(audio, language="es-ES")
 
     except sr.UnknownValueError:
-        print("Google Web Speech API could not understand audio")
+        return "Google Web Speech API could not understand audio"
 
     except sr.RequestError as e:
-        print(f"Could not request results from Google Web Speech API; {e}")
+        return f"Could not request results from Google Web Speech API; {e}"
 
     
 if __name__ == "__main__":
