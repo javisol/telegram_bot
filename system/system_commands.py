@@ -5,30 +5,56 @@ import json
 import random
 import os
 from typing import Optional
-from validators import IPValidator, TimeValidator, InputValidator, ValidationError
+from validators import IPValidator, TimeValidator, InputValidator
+
+# Default timeout for subprocess calls
+DEFAULT_TIMEOUT = 30
+
 
 class SystemCommandError(Exception):
     """Base exception for system command errors."""
     pass
 
+
 class SubprocessError(SystemCommandError):
     """Raised when a subprocess call fails."""
     pass
+
 
 class NetworkError(SystemCommandError):
     """Raised when a network request fails."""
     pass
 
+
 class FileNotFoundError(SystemCommandError):
     """Raised when a required file is not found."""
     pass
 
-class ValidationError(SystemCommandError):
-    """Raised when input validation fails."""
-    pass
 
-# Default timeout for subprocess calls
-DEFAULT_TIMEOUT = 30
+# Shared sanitization utility - prevents duplicate code
+def _sanitize_subprocess_input(input_text: str) -> str:
+    """Sanitize input for subprocess commands to prevent injection attacks.
+    
+    Args:
+        input_text: Raw user input
+        
+    Returns:
+        Sanitized string safe for subprocess execution
+    """
+    # Strip whitespace
+    sanitized = input_text.strip()
+    
+    # Remove common shell metacharacters that could cause injection
+    dangerous_patterns = [';', '|', '&', '$', '`', '(', ')', '[', ']', '{', '}', '\\', '"', "'"]
+    for pattern in dangerous_patterns:
+        sanitized = sanitized.replace(pattern, '')
+    
+    # Limit length to prevent DoS
+    if len(sanitized) > 255:
+        sanitized = sanitized[:255]
+    
+    return sanitized
+
 
 def _safe_subprocess_run(cmd: list[str], timeout: int = DEFAULT_TIMEOUT) -> subprocess.CompletedProcess:
     """Safely run a subprocess command with timeout.
@@ -53,31 +79,6 @@ def _safe_subprocess_run(cmd: list[str], timeout: int = DEFAULT_TIMEOUT) -> subp
     except Exception as e:
         raise SubprocessError(f"Subprocess execution failed: {e}")
 
-def _sanitize_subprocess_input(input_text: str) -> str:
-    """Sanitize input for subprocess commands to prevent injection attacks.
-    
-    Args:
-        input_text: Raw user input
-        
-    Returns:
-        Sanitized string safe for subprocess execution
-        
-    Raises:
-        ValidationError: If input contains dangerous characters
-    """
-    # Strip whitespace
-    sanitized = input_text.strip()
-    
-    # Remove common shell metacharacters that could cause injection
-    dangerous_patterns = [';', '|', '&', '$', '`', '(', ')', '[', ']', '{', '}', '\\', '"', "'"]
-    for pattern in dangerous_patterns:
-        sanitized = sanitized.replace(pattern, '')
-    
-    # Limit length to prevent DoS
-    if len(sanitized) > 255:
-        sanitized = sanitized[:255]
-    
-    return sanitized
 
 def uptime() -> str:
     """Display server uptime.
@@ -85,10 +86,8 @@ def uptime() -> str:
     Returns:
         Server uptime information
     """
-    try:
-        return subprocess.check_output(["uptime"]).decode('utf-8')
-    except Exception as e:
-        raise SubprocessError(f"Failed to get uptime: {e}")
+    return _safe_subprocess_run(["uptime"]).stdout
+
 
 def ip() -> str:
     """Get the current IP address.
@@ -106,33 +105,29 @@ def ip() -> str:
     except requests.RequestException as e:
         raise NetworkError(f"Failed to fetch IP address: {e}")
 
+
 def geoip(input_text: str) -> str:
     """Perform geoIP lookup for a given IP address.
     
     Args:
-        input_text: User input containing the IP address (prefix 'geoip ' should be stripped)
+        input_text: User input containing the IP address
         
     Returns:
         GeoIP lookup result
         
     Raises:
-        ValidationError: If IP address is invalid
         SubprocessError: If SSH command fails
     """
-    try:
-        # Extract and validate IP using IPValidator
-        ip = IPValidator.extract_ip(input_text)
-        # Sanitize IP to prevent command injection
-        ip = _sanitize_subprocess_input(ip)
-        result = _safe_subprocess_run(
-            ["ssh", "reverse", "geoiplookup", ip],
-            timeout=DEFAULT_TIMEOUT
-        )
-        return result.stdout
-    except ValidationError as e:
-        raise ValidationError(f"GeoIP lookup failed: {e}")
-    except SubprocessError as e:
-        raise SubprocessError(f"GeoIP lookup failed: {e}")
+    # Extract and validate IP using IPValidator
+    ip = IPValidator.extract_ip(input_text)
+    # Sanitize IP to prevent command injection
+    ip = _sanitize_subprocess_input(ip)
+    result = _safe_subprocess_run(
+        ["ssh", "reverse", "geoiplookup", ip],
+        timeout=DEFAULT_TIMEOUT
+    )
+    return result.stdout
+
 
 def fortune() -> str:
     """Get a random fortune message.
@@ -143,14 +138,11 @@ def fortune() -> str:
     Raises:
         SubprocessError: If fortune command fails
     """
-    try:
-        result = _safe_subprocess_run(
-            ["fortune", "-a"],
-            timeout=10
-        )
-        return result.stdout
-    except SubprocessError as e:
-        raise SubprocessError(f"Fortune command failed: {e}")
+    return _safe_subprocess_run(
+        ["fortune", "-a"],
+        timeout=10
+    ).stdout
+
 
 def firewall_flush() -> str:
     """Flush firewall rules.
@@ -161,73 +153,61 @@ def firewall_flush() -> str:
     Raises:
         SubprocessError: If SSH command fails
     """
-    try:
-        result = _safe_subprocess_run(
-            ["ssh", "reverse", "sudo", "fwflush"],
-            timeout=DEFAULT_TIMEOUT
-        )
-        return result.stdout
-    except SubprocessError as e:
-        raise SubprocessError(f"Firewall flush failed: {e}")
+    return _safe_subprocess_run(
+        ["ssh", "reverse", "sudo", "fwflush"],
+        timeout=DEFAULT_TIMEOUT
+    ).stdout
+
 
 def firewall_unban(input_text: str) -> str:
     """Unban a specific IP from fail2ban.
     
     Args:
-        input_text: User input containing the IP address (prefix 'fwflush ' should be stripped)
+        input_text: User input containing the IP address
         
     Returns:
         Result of the unban operation
         
     Raises:
-        ValidationError: If input is invalid
         SubprocessError: If SSH command fails
     """
-    try:
-        # Extract and validate IP using IPValidator
-        ip = IPValidator.extract_ip(input_text)
-        # Sanitize IP to prevent command injection
-        ip = _sanitize_subprocess_input(ip)
-        result = _safe_subprocess_run(
-            ["ssh", "reverse", "sudo", "unban", ip],
-            timeout=DEFAULT_TIMEOUT
-        )
-        return result.stdout
-    except ValidationError as e:
-        raise ValidationError(f"Unban failed: {e}")
-    except SubprocessError as e:
-        raise SubprocessError(f"Unban failed: {e}")
+    # Extract and validate IP using IPValidator
+    ip = IPValidator.extract_ip(input_text)
+    # Sanitize IP to prevent command injection
+    ip = _sanitize_subprocess_input(ip)
+    result = _safe_subprocess_run(
+        ["ssh", "reverse", "sudo", "unban", ip],
+        timeout=DEFAULT_TIMEOUT
+    )
+    return result.stdout
+
 
 def firewall_fail2ban(input_text: str) -> str:
     """Start or stop fail2ban service.
     
     Args:
-        input_text: User input containing the action (prefix 'fail2ban ' should be stripped)
+        input_text: User input containing the action (start/stop)
         
     Returns:
         Result of the fail2ban operation
         
     Raises:
-        ValidationError: If input is invalid
         SubprocessError: If SSH command fails
     """
-    try:
-        start_stop = input_text[10:].strip()
-        if not start_stop:
-            raise ValidationError("Action cannot be empty")
-        if start_stop not in ["start", "stop"]:
-            raise ValidationError(f"Invalid action. Use 'start' or 'stop'. Got: {start_stop}")
-        # Sanitize start_stop to prevent command injection
-        start_stop = _sanitize_subprocess_input(start_stop)
-        result = _safe_subprocess_run(
-            ["ssh", "reverse", "sudo", "f2b", start_stop],
-            timeout=DEFAULT_TIMEOUT
-        )
-        return result.stdout
-    except ValidationError as e:
-        raise ValidationError(f"Fail2ban operation failed: {e}")
-    except SubprocessError as e:
-        raise SubprocessError(f"Fail2ban operation failed: {e}")
+    # Extract and validate action
+    start_stop = input_text[10:].strip()
+    if not start_stop:
+        raise SubprocessError("Action cannot be empty")
+    if start_stop not in ["start", "stop"]:
+        raise SubprocessError(f"Invalid action. Use 'start' or 'stop'. Got: {start_stop}")
+    # Sanitize start_stop to prevent command injection
+    start_stop = _sanitize_subprocess_input(start_stop)
+    result = _safe_subprocess_run(
+        ["ssh", "reverse", "sudo", "f2b", start_stop],
+        timeout=DEFAULT_TIMEOUT
+    )
+    return result.stdout
+
 
 def audio_to_wav(file_path: str) -> str:
     """Convert audio file to WAV format.
@@ -261,36 +241,31 @@ def audio_to_wav(file_path: str) -> str:
     except Exception as e:
         raise RuntimeError(f"ffmpeg conversion failed: {e}")
 
+
 def talk(input_text: str) -> None:
     """Send a voice message response.
     
     Args:
-        input_text: User input containing the message text (prefix 'talk ' should be stripped)
+        input_text: User input containing the message text
         
     Raises:
-        ValidationError: If input is invalid
         SubprocessError: If voice message command fails
     """
-    try:
-        input_text = input_text[7:].strip()
-        if not input_text:
-            raise ValidationError("Message cannot be empty")
-        if len(input_text) > 1000:
-            raise ValidationError("Message too long (max 1000 characters)")
-        # Sanitize input to prevent injection
-        input_text = _sanitize_subprocess_input(input_text)
-        result = subprocess.run(
-            ["/usr/local/bin/assistant/ratoncio_send_voice", input_text],
-            capture_output=True,
-            text=True,
-            timeout=DEFAULT_TIMEOUT
-        )
-    except ValidationError as e:
-        raise ValidationError(f"Voice message failed: {e}")
-    except subprocess.TimeoutExpired:
-        raise SubprocessError("Voice message send timed out")
-    except Exception as e:
-        raise SubprocessError(f"Voice message send failed: {e}")
+    # Extract and validate message
+    input_text = input_text[7:].strip()
+    if not input_text:
+        raise SubprocessError("Message cannot be empty")
+    if len(input_text) > 1000:
+        raise SubprocessError("Message too long (max 1000 characters)")
+    # Sanitize input to prevent injection
+    input_text = _sanitize_subprocess_input(input_text)
+    result = subprocess.run(
+        ["/usr/local/bin/assistant/ratoncio_send_voice", input_text],
+        capture_output=True,
+        text=True,
+        timeout=DEFAULT_TIMEOUT
+    )
+
 
 def reminder(input_text: str) -> Optional[str]:
     """Set a reminder for a specific time or duration.
@@ -300,12 +275,11 @@ def reminder(input_text: str) -> Optional[str]:
         
     Returns:
         'OK' if successful, help message if parsing fails
-        
-    Raises:
-        SubprocessError: If systemd-run command fails
     """
     help_message = "/remind hh:mm message\n/remind XXm message, for a message after XX minutes (s, m and h for seconds, minutes and hours)"
     send_message_command = "/usr/local/bin/assistant/ratoncio_send_msg"
+    
+    # Extract time and message
     try:
         input_text = input_text[8:]
         time, message = input_text.split(None, 1)
@@ -316,7 +290,7 @@ def reminder(input_text: str) -> Optional[str]:
     # Validate time format using TimeValidator
     try:
         TimeValidator.validate(time)
-    except ValidationError as e:
+    except Exception as e:
         return f"Invalid time format: {e.message}\n{help_message}"
     
     # hh:mm match
@@ -344,15 +318,12 @@ def reminder(input_text: str) -> Optional[str]:
     else:
         return f"Parse error in time format\n{help_message}"
 
+
 def oblique() -> str:
     """Get a random oblique strategy card.
     
     Returns:
         Random oblique strategy card text or error message
-        
-    Raises:
-        FileNotFoundError: If JSON file does not exist
-        json.JSONDecodeError: If JSON file is malformed
     """
     ob_st_file = os.environ.get("OBLIQUE_STRATEGIES_FILE",
                                "/data/repositories/telegram_bot/oblique_strategies/oblique_strategies_2015.json")
@@ -384,6 +355,7 @@ def oblique() -> str:
         raise json.JSONDecodeError(f"Could not decode JSON from the file '{ob_st_file}'. Check file format.", e.doc, e.pos)
     except Exception as e:
         raise SystemCommandError(f"Unexpected error in oblique: {e}")
+
 
 if __name__ == "__main__":
     print(uptime())

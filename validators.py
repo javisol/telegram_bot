@@ -4,7 +4,7 @@ This module provides centralized validation functions to prevent injection attac
 and ensure data integrity across the application.
 """
 import re
-from typing import Optional, Union
+from typing import Optional, Callable
 from dataclasses import dataclass
 
 
@@ -97,8 +97,6 @@ class TimeValidator:
         return ValidationResult(is_valid=True, message=f"Valid time format: {time_str}", field="time")
 
 
-
-
 class InputValidator:
     """General input validation utilities."""
     
@@ -143,7 +141,7 @@ class InputValidator:
         return sanitized
     
     @staticmethod
-    def validate_with_error(value: str, validator_func, field_name: Optional[str] = None) -> None:
+    def validate_with_error(value: str, validator_func: Callable, field_name: Optional[str] = None) -> None:
         """Validate a value and raise ValidationError if invalid.
         
         Args:
@@ -159,5 +157,3 @@ class InputValidator:
         
         if not validator_func(value):
             raise ValidationError(f"Invalid {field_name or 'value'}", field_name)
-
-
