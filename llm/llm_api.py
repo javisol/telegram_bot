@@ -51,7 +51,7 @@ def query_llm(prompt: str, stream: bool = False) -> str:
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2048,
+                "max_tokens": 65536,
                 "stream": stream
             },
             timeout=TIMEOUT

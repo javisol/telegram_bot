@@ -256,7 +256,7 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     prompt = update.message.text
     
     # Validate input length to prevent DoS
-    MAX_PROMPT_LENGTH = 4096
+    MAX_PROMPT_LENGTH = 65536
     if len(prompt) > MAX_PROMPT_LENGTH:
         await update.message.reply_text(
             f"Prompt too long. Maximum length is {MAX_PROMPT_LENGTH} characters. "
