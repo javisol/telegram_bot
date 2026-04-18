@@ -69,4 +69,11 @@ def query_llm(prompt: str, stream: bool = False) -> str:
         
     except requests.RequestException as e:
         logger.error(f"Error communicating with LLM API: {e}")
-        return "AI LLM is off"
+        
+        # Check if it's a "Message is too long" error from the LLM API
+        error_str = str(e).lower()
+        if "message is too long" in error_str or "too long" in error_str:
+            logger.error(f"LLM API reported: Message is too long. Prompt length: {len(prompt)}")
+            return f"Error communicating with AI: Message is too long.\n\nDetails: {str(e)}\n\nYour prompt length: {len(prompt)} characters\nCurrent max_tokens limit: 65536\n\nTry breaking your message into smaller parts or summarizing the key points."
+        else:
+            return "AI LLM is off"

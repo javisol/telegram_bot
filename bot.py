@@ -275,7 +275,19 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     except Exception as e:
         error_msg = f"Error communicating with AI: {str(e)}"
         logger.error(error_msg)
-        await update.message.reply_text(error_msg)
+        
+        # Check if it's a "Message is too long" error from the LLM API
+        error_str = str(e).lower()
+        if "message is too long" in error_str or "too long" in error_str:
+            await update.message.reply_text(
+                f"Error communicating with AI: Message is too long.\n\n"
+                f"Details: {error_msg}\n\n"
+                f"Your prompt length: {len(prompt)} characters\n"
+                f"Current MAX_PROMPT_LENGTH limit: {MAX_PROMPT_LENGTH} characters\n\n"
+                f"Try breaking your message into smaller parts or summarizing the key points."
+            )
+        else:
+            await update.message.reply_text(error_msg)
 
 
 # =============================================================================
