@@ -11,6 +11,7 @@ from weather import weather
 from system import system_commands
 from speech import speech_recog
 from llm import llm_api
+from llm.conversation_context import ConversationContextManager
 
 
 # Enable logging
@@ -247,13 +248,15 @@ async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /ai command.
     
-    Forwards the user's query to the LLM API and returns the AI's response.
+    Forwards the user's query to the LLM API with conversation context
+    and returns the AI's response.
     
     Args:
         update: Telegram update object containing the message
         context: Context object containing bot reference
     """
     prompt = update.message.text
+    user_id = update.effective_user.id
     
     # Validate input length to prevent DoS
     MAX_PROMPT_LENGTH = 65536
@@ -270,7 +273,25 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     
     try:
         logger.info(f"Processing AI query: {sanitized_prompt}...")
-        response = llm_api.query_llm(prompt)
+        
+        # Initialize conversation context manager for this user
+        context_manager = ConversationContextManager(user_id)
+        
+        # Get or initialize conversation history
+        history = context_manager.get_or_create()
+        
+        # Append user's message to history
+        context_manager.append("user", prompt)
+        
+        # Get conversation context for LLM API (last 20 messages by default)
+        conversation_context = context_manager.get_context(max_messages=20)
+        
+        # Call LLM API with conversation context
+        response = llm_api.query_llm(prompt, context=conversation_context)
+        
+        # Optionally save the assistant's response back to history
+        context_manager.append("assistant", response)
+        
         await update.message.reply_text(response)
     except Exception as e:
         error_msg = f"Error communicating with AI: {str(e)}"

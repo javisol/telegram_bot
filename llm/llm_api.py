@@ -5,6 +5,9 @@ Forwards queries to the LLM API configured via environment variable.
 import os
 import requests
 import logging
+from typing import List, Dict, Optional
+
+from conversation_context import ConversationContextManager
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +17,13 @@ LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
 TIMEOUT=300
 
 
-def query_llm(prompt: str, stream: bool = False) -> str:
+def query_llm(prompt: str, context: List[Dict] = None, stream: bool = False) -> str:
     """
     Send a query to the LLM API and return the response.
     
     Args:
         prompt: The user's query to send to the LLM
+        context: Optional conversation history for multi-turn context
         stream: If True, use streaming response (default: False)
         
     Returns:
@@ -41,15 +45,21 @@ def query_llm(prompt: str, stream: bool = False) -> str:
         if not LLM_API_URL.startswith("https://") and not LLM_API_URL.startswith("http://rtn:"):
             logger.warning(f"LLM API using HTTP: {LLM_API_URL}")
         
+        # Build messages array with context
+        messages = [
+            {"role": "system", "content": system_prompt}
+        ]
+        
+        # Append conversation context if provided
+        if context:
+            messages.extend(context)
+        
         # Make POST request to the LLM API
         response = requests.post(
             f"{LLM_API_URL}/v1/chat/completions",
             json={
                 "model": "default",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": messages,
                 "temperature": 0.7,
                 "max_tokens": 65536,
                 "stream": stream
