@@ -9,7 +9,7 @@ import os
 import logging
 from typing import List, Dict, Optional
 
-from conversation_context_db import (
+from llm.conversation_context_db import (
     get_history,
     append_message,
     get_or_create_history,
@@ -190,7 +190,7 @@ class ConversationContextManager:
 
 
 # Singleton database connection for efficiency
-def get_connection() -> sqlite3.Connection:
+def get_connection():
     """
     Get a database connection, creating the database and tables if needed.
     

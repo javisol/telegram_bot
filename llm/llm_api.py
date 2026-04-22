@@ -7,7 +7,6 @@ import requests
 import logging
 from typing import List, Dict, Optional
 
-from conversation_context import ConversationContextManager
 
 logger = logging.getLogger(__name__)
 

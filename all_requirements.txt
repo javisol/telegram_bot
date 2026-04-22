@@ -2,3 +2,4 @@
 -r calendar/requirements.txt
 -r weather/requirements.txt
 -r speech/requirements.txt
+-r llm/requirements.txt
