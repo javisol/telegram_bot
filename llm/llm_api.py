@@ -38,7 +38,7 @@ def query_llm(prompt: str, context: List[Dict] = None, stream: bool = False) -> 
         
         # System prompt to identify the AI - configurable via environment variable
         system_prompt = os.environ.get("SYSTEM_PROMPT",
-                                       "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and friendly responses. Answer in the language of the user's query.")
+                                       "You are RatoncIA, an intelligent AI assistant. Provide helpful, accurate, and short responses. Answer in the language of the user's query.")
         
         # Warn if using HTTP for external services
         if not LLM_API_URL.startswith("https://") and not LLM_API_URL.startswith("http://rtn:"):
