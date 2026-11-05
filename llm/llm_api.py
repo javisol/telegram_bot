@@ -15,15 +15,39 @@ logger = logging.getLogger(__name__)
 LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
 TIMEOUT=300
 
+"""
+LLM API integration module.
+Forwards queries to the LLM API configured via environment variable.
+Supports multimodal content (text + images).
+"""
+import os
+import requests
+import logging
+from typing import List, Dict, Optional
 
-def query_llm(prompt: str, context: List[Dict] = None, stream: bool = False) -> str:
+logger = logging.getLogger(__name__)
+
+# LLM API configuration - retrieved from environment variable
+# Default to HTTPS for external services, HTTP for internal Docker network
+LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
+TIMEOUT = 300
+
+
+def query_llm(
+    prompt: str, 
+    context: List[Dict] = None, 
+    stream: bool = False,
+    images: List[Dict[str, str]] = None
+) -> str:
     """
     Send a query to the LLM API and return the response.
+    Supports multi-turn conversation and multimodal content (text + images).
     
     Args:
         prompt: The user's query to send to the LLM
         context: Optional conversation history for multi-turn context
         stream: If True, use streaming response (default: False)
+        images: Optional list of image data dictionaries with 'mime_type' and 'base64' keys
         
     Returns:
         The LLM's response as a string
@@ -44,14 +68,41 @@ def query_llm(prompt: str, context: List[Dict] = None, stream: bool = False) -> 
         if not LLM_API_URL.startswith("https://") and not LLM_API_URL.startswith("http://rtn:"):
             logger.warning(f"LLM API using HTTP: {LLM_API_URL}")
         
-        # Build messages array with context
+        # 1. Iniciamos los mensajes con el prompt del sistema
         messages = [
             {"role": "system", "content": system_prompt}
         ]
         
-        # Append conversation context if provided
+        # 2. Añadimos el historial de conversación si existe (Mantiene la memoria)
         if context:
             messages.extend(context)
+        
+        # 3. Procesamos el mensaje actual del usuario (Multimodal o Texto plano)
+        if images and len(images) > 0:
+            content = []
+            
+            # Si el usuario escribió algo junto a la foto, lo añadimos primero
+            if prompt:
+                content.append({"type": "text", "text": prompt})
+            else:
+                content.append({"type": "text", "text": "Analiza esta imagen."})
+            
+            # Añadimos las imágenes en el formato estándar OpenAI V1 para Visión
+            for img in images:
+                mime = img.get("mime_type", "image/jpeg")
+                b64_data = img.get("base64", "")
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime};base64,{b64_data}"
+                    }
+                })
+            
+            messages.append({"role": "user", "content": content})
+        
+        elif prompt:
+            # Si no hay imágenes, se envía como texto plano estándar
+            messages.append({"role": "user", "content": prompt})
         
         # Make POST request to the LLM API
         response = requests.post(
@@ -71,9 +122,11 @@ def query_llm(prompt: str, context: List[Dict] = None, stream: bool = False) -> 
         
         # Extract and return the response
         llm_response = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        
         # Sanitize response for logging
         sanitized_response = llm_response[:50].replace(" ", "_").replace(":", "_")
         logger.info(f"Received {'streaming ' if stream else ''}response from LLM API: {sanitized_response}...")
+        
         return llm_response
         
     except requests.RequestException as e:
