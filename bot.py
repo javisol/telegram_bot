@@ -284,7 +284,7 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         context_manager.append("user", prompt)
         
         # Get conversation context for LLM API (last 20 messages by default)
-        conversation_context = context_manager.get_context(max_messages=20)
+        conversation_context = context_manager.get_context(max_messages=100)
         
         # Call LLM API with conversation context
         response = llm_api.query_llm(prompt, context=conversation_context)
@@ -376,7 +376,8 @@ def main() -> None:
     
     # Message handlers
     # Non-command text messages - echo the message
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    #application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_command))
     
     # Voice messages - process and transcribe
     application.add_handler(MessageHandler(filters.VOICE, audio_command))
