@@ -22,7 +22,7 @@ from llm.conversation_context_db import (
 logger = logging.getLogger(__name__)
 
 # Default configuration
-DEFAULT_HISTORY_LIMIT = 20  # Number of messages to pass to LLM
+DEFAULT_HISTORY_LIMIT = 100  # Number of messages to pass to LLM
 DEFAULT_HISTORY_TTL_DAYS = 7  # Days to keep history (for cleanup)
 
 
