@@ -1,244 +1,132 @@
-"""
-LLM Chat Handler for Telegram Bot.
-
-This module provides a high-level interface for chatting with the LLM API
-through the Telegram bot, with automatic conversation context management.
-Supports multimodal input (text and images).
-"""
 import os
 import logging
-from typing import Optional
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from llm import llm_api
 from llm.llm_api import query_llm
 from llm.conversation_context import ConversationContextManager
-from llm.image_processor import ImageProcessor, prepare_multimodal_content
+from llm.image_processor import ImageProcessor
+from llm.thread_router import TransparentThreadRouter
+from llm.conversation_context_db import get_user_threads
 
 logger = logging.getLogger(__name__)
 
+LLM_API_URL = os.environ.get("LLM_API_URL", "http://rtn:11444")
+router = TransparentThreadRouter(api_url=LLM_API_URL)
 
-async def ai_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Handle AI chat queries with conversation context.
+async def _process_input_and_run(update: Update, message_text: str, is_pure_image: bool = False) -> None:
+    user_id = update.effective_user.id
     
-    This command allows users to chat with the AI assistant, and the
-    conversation history is automatically tracked and used for context
-    in subsequent messages. Supports both text-only and multimodal (text + images) input.
-    
-    Args:
-        update: Telegram update object containing user information
-        context: Context object containing bot reference
-    """
-    user = update.effective_user
-    user_id = user.id
-    
-    try:
-        # Get or create conversation context for this user
-        context_manager = ConversationContextManager(user_id)
-        context_history = context_manager.get_or_create()
+    # 1. Determinar Hilo dinámicamente
+    if not message_text.strip():
+        active_thread = "General" if not is_pure_image else "Análisis Visual"
+    else:
+        # El router analiza el texto para decidir el hilo de forma transparente
+        active_thread = router.determine_thread(user_id, message_text)
         
-        # Lee tanto el texto normal como el texto adjunto a una foto
-        if update.message:
-            message_text = update.message.text or update.message.caption or ""
-        else:
-            message_text = ""
+    # 2. Gestionar Archivos Multimedia (Imágenes)
+    photo_file = None
+    images = None
+    if update.message and update.message.photo:
+        photo_file = await update.message.photo[-1].get_file()
         
-        # Check if there's an attached photo (Corregido con await)
-        photo_file = None
-        if update.message and update.message.photo:
-            # Get the highest resolution photo
-            photo_file = await update.message.photo[-1].get_file()
-        
-        # Process image if available
-        images = None
-        if photo_file:
-            image_processor = ImageProcessor()
-            image_data = await image_processor.process_image(photo_file)
-            if "error" not in image_data:
-                images = [
-                    {
-                        "mime_type": image_data["mime_type"],
-                        "base64": image_data["base64"]
-                    }
-                ]
-                logger.info(f"Image processed for user {user_id}: {image_data['file_name']}")
-        
-        # Check if message is empty (only image or no content)
-        if not message_text.strip() and not images:
-            await update.message.reply_text(
-                "Por favor, escribe un mensaje para la IA.",
-                parse_mode="HTML"
-            )
-            return
-        
-        # Guardar el mensaje del usuario en el historial antes de enviar la petición
-        history_text = message_text if message_text else "[Imagen enviada]"
-        context_manager.append("user", history_text)
-        
-        # Build conversation context with current message
-        max_messages = context_manager.history_limit
-        current_context = context_history[-max_messages:] if len(context_history) > max_messages else context_history
-        
-        # Query the LLM API
-        logger.info(f"Processing AI query for user {user_id}: {message_text[:50] if message_text else 'Image'}...")
-        
-        # Pass images to the LLM API if available
-        llm_response = query_llm(message_text, context=current_context, images=images)
-        
-        # Append assistant response to context
-        context_manager.append("assistant", llm_response)
-        
-        # Send response to user (Usa HTML por seguridad ante caracteres conflictivos)
-        await update.message.reply_text(
-            llm_response,
-            parse_mode="HTML"
-        )
-        
-        logger.info(f"AI response sent to user {user_id}")
-        
-    except Exception as e:
-        logger.error(f"Error in AI chat for user {user_id}: {e}")
-        await update.message.reply_text(
-            "Hubo un error al comunicarse con la IA. Intenta de nuevo más tarde.",
-            parse_mode="HTML"
-        )
-
-
-async def ai_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Handle image messages specifically for image analysis.
-    
-    This command allows users to send images for analysis without additional text.
-    
-    Args:
-        update: Telegram update object containing user information
-        context: Context object containing bot reference
-    """
-    user = update.effective_user
-    user_id = user.id
-    
-    try:
-        # Get or create conversation context for this user
-        context_manager = ConversationContextManager(user_id)
-        context_history = context_manager.get_or_create()
-        
-        # Check if there's an attached photo (Corregido con await)
-        photo_file = None
-        if update.message and update.message.photo:
-            # Get the highest resolution photo
-            photo_file = await update.message.photo[-1].get_file()
-        
-        if not photo_file:
-            await update.message.reply_text(
-                "Por favor, envía una imagen para que la IA la analice.",
-                parse_mode="HTML"
-            )
-            return
-        
-        # Process image
+    if photo_file:
         image_processor = ImageProcessor()
         image_data = await image_processor.process_image(photo_file)
-        
-        if "error" in image_data:
-            await update.message.reply_text(
-                f"Error al procesar la imagen: {image_data['error']}",
-                parse_mode="HTML"
-            )
-            return
-        
-        logger.info(f"Image processed for user {user_id}: {image_data['file_name']}")
-        
-        # Guardar en el historial
-        context_manager.append("user", "[Imagen enviada para análisis]")
-        
-        # Build conversation context with current message
-        max_messages = context_manager.history_limit
-        current_context = context_history[-max_messages:] if len(context_history) > max_messages else context_history
-        
-        # Query LLM with just the image (no text prompt)
-        llm_response = query_llm("", context=current_context, images=[
-            {
+        if "error" not in image_data:
+            images = [{
                 "mime_type": image_data["mime_type"],
                 "base64": image_data["base64"]
-            }
-        ])
-        
-        # Append assistant response to context
-        context_manager.append("assistant", llm_response)
-        
-        # Send response to user
-        await update.message.reply_text(
-            llm_response,
-            parse_mode="HTML"
-        )
-        
-        logger.info(f"AI response sent to user {user_id}")
-        
-    except Exception as e:
-        logger.error(f"Error in AI image for user {user_id}: {e}")
-        await update.message.reply_text(
-            "Hubo un error al procesar la imagen. Intenta de nuevo más tarde.",
-            parse_mode="HTML"
-        )
+            }]
+            logger.info(f"Imagen lista en memoria buffer para el hilo: {active_thread}")
 
+    # 3. Cargar el contexto del hilo seleccionado
+    context_manager = ConversationContextManager(user_id, thread_id=active_thread)
+    context_history = context_manager.get_or_create()
+    
+    # 4. Notificar discretamente si se inicializa un contexto temático nuevo
+    if active_thread != "General" and active_thread != "Análisis Visual" and len(context_history) == 0:
+        await update.message.reply_text(f"📝 *Abriendo contexto:* _{active_thread}_", parse_mode="Markdown")
+
+    # Guardar entrada en base de datos local
+    history_save_text = message_text if message_text.strip() else "[Imagen]"
+    context_manager.append("user", history_save_text)
+    
+    # 5. Ejecución del LLM a través de llm_api
+    llm_response = query_llm(message_text, context=context_history, images=images)
+    
+    # Guardar respuesta del asistente en el hilo correspondiente
+    context_manager.append("assistant", llm_response)
+    
+    # Enviar al chat de Telegram
+    await update.message.reply_text(llm_response, parse_mode="HTML")
+
+async def ai_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message:
+        message_text = update.message.text or update.message.caption or ""
+    else:
+        message_text = ""
+    await _process_input_and_run(update, message_text, is_pure_image=False)
+
+async def ai_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await _process_input_and_run(update, "", is_pure_image=True)
 
 async def ai_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Clear conversation history for a user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
-    user = update.effective_user
-    user_id = user.id
-    
+    user_id = update.effective_user.id
     try:
-        # Create context manager and clear history
+        # Se borra la totalidad de los hilos de este usuario
         context_manager = ConversationContextManager(user_id)
-        context_manager.clear()
-        
-        await update.message.reply_text(
-            "Historial de conversación borrado. Puedes continuar chateando con la IA.",
-            parse_mode="HTML"
-        )
-        logger.info(f"Cleared conversation history for user {user_id}")
-        
+        context_manager.clear(clear_all=True)
+        await update.message.reply_text("Historial completo (todos los hilos) borrado correctamente.", parse_mode="HTML")
     except Exception as e:
-        logger.error(f"Error clearing conversation history for user {user_id}: {e}")
-        await update.message.reply_text(
-            "Hubo un error al borrar el historial.",
-            parse_mode="HTML"
-        )
+        logger.error(f"Error al limpiar base de datos: {e}")
+        await update.message.reply_text("Hubo un error al borrar el historial.", parse_mode="HTML")
 
 
 async def ai_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Show AI command help information.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
     help_text = """
-<b>Comandos de IA:</b>
-
-/ai - Chatear con la IA (RatoncIA) - Texto o imagen
-/ai_image - Analizar una imagen enviada
-/ai_clear - Borrar historial de conversación
-/ai_help - Mostrar esta ayuda
+<b>Comandos de IA (RatoncIA):</b>
+/ai - Conversar de forma natural. Los hilos temáticos se organizan automáticamente de manera invisible.
+/ai_image - Analizar una imagen de forma aislada.
+/ai_clear - Eliminar todo el historial y limpiar todos los hilos creados.
+/hilos - ver los temas que recuerda la IA (RatoncIA)
+/ai_help - Ver esta ayuda.
 """
     await update.message.reply_text(help_text, parse_mode="HTML")
 
 
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /ai command or default behavior.
-    
-    Forwards the user's query to the LLM API with conversation context
-    and returns the AI's response.
-    """
-    # Como tu handler principal ahora redirige todo a ai_chat de forma polimórfica,
-    # simplemente hacemos que ai_command delegue el trabajo si recibe entradas complejas.
     await ai_chat(update, context)
+
+async def ai_threads(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Muestra al usuario un listado con todos los hilos/temas de conversación 
+    que la IA recuerda actualmente sobre él.
+    """
+    user_id = update.effective_user.id
+    
+    try:
+        # Recuperamos la lista de hilos únicos del usuario
+        existing_threads = get_user_threads(user_id)
+        
+        if not existing_threads:
+            text = "🧠 *RatoncIA no tiene hilos temáticos activos para ti todavía.*\n\nTodas tus conversaciones actuales están guardadas bajo el contexto general."
+            await update.message.reply_text(text, parse_mode="Markdown")
+            return
+            
+        # Construimos un listado limpio usando viñetas emoji
+        text_lines = ["🧠 *Temas que recuerdo sobre nuestras conversaciones:*", "--------------"]
+        for thread in sorted(existing_threads):
+            text_lines.append(f"• _{thread}_")
+            
+        text_lines.append("\n_Los hilos se gestionan automáticamente según el tema de tus mensajes._")
+        
+        await update.message.reply_text("\n".join(text_lines), parse_mode="Markdown")
+        logger.info(f"Listado de hilos enviado al usuario {user_id}")
+        
+    except Exception as e:
+        logger.error(f"Error al listar hilos para el usuario {user_id}: {e}")
+        await update.message.reply_text(
+            "Hubo un error al recuperar tus hilos de conversación.",
+            parse_mode="HTML"
+        )

@@ -12,7 +12,7 @@ from system import system_commands
 from speech import speech_recog
 from llm import llm_api
 from llm.conversation_context import ConversationContextManager
-from llm.llm_chat import ai_chat, ai_image, ai_clear, ai_help, ai_command
+from llm.llm_chat import ai_chat, ai_image, ai_clear, ai_help, ai_command, ai_threads
 
 
 # Enable logging
@@ -28,14 +28,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /start command.
-    
-    Sends a welcome message to the user when they start the bot.
-    
-    Args:
-        update: Telegram update object containing user information
-        context: Context object containing bot reference
-    """
+    """Handle the /start command."""
     user = update.effective_user
     await update.message.reply_html(
         rf"Hi {user.mention_html()}!",
@@ -44,14 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /help command.
-    
-    Sends a list of available commands to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /help command."""
     text = """
 <b>Comandos:</b>
 --------------
@@ -71,6 +57,7 @@ AI              - Chatear con la IA (RatoncIA)
 ai_image        - Analizar una imagen
 ai_clear        - Borrar historial de conversación
 ai_help         - Ayuda sobre comandos de IA
+hilos           - ver los temas que recuerda la IA (RatoncIA)
 """
     await update.message.reply_text(text, parse_mode="HTML")
 
@@ -80,95 +67,46 @@ ai_help         - Ayuda sobre comandos de IA
 # =============================================================================
 
 async def uptime_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /uptime command.
-    
-    Retrieves and sends the server uptime information to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /uptime command."""
     text = system_commands.uptime()
     await update.message.reply_text(text)
 
 
 async def fwflush_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /fwflush command.
-    
-    Flushes firewall rules and sends the result to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /fwflush command."""
     text = system_commands.firewall_flush()
     await update.message.reply_text(text)
 
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /unban command.
-    
-    Unbans a specific IP from fail2ban based on user input.
-    
-    Args:
-        update: Telegram update object containing the IP address
-        context: Context object containing bot reference
-    """
+    """Handle the /unban command."""
     input_text = update.message.text
     text = system_commands.firewall_unban(input_text)
     await update.message.reply_text(text)
 
 
 async def fail2ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /fail2ban command.
-    
-    Starts or stops the fail2ban service based on user input.
-    
-    Args:
-        update: Telegram update object containing the action (start/stop)
-        context: Context object containing bot reference
-    """
+    """Handle the /fail2ban command."""
     input_text = update.message.text
     text = system_commands.firewall_fail2ban(input_text)
     await update.message.reply_text(text)
 
 
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /ip command.
-    
-    Retrieves and sends the current IP address to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /ip command."""
     text = system_commands.ip()
     await update.message.reply_text(text)
 
 
 async def geoip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /geoip command.
-    
-    Performs a geoIP lookup for the specified IP address.
-    
-    Args:
-        update: Telegram update object containing the IP address
-        context: Context object containing bot reference
-    """
+    """Handle the /geoip command."""
     input_text = update.message.text
     text = system_commands.geoip(input_text)
     await update.message.reply_text(text)
 
 
 async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /cita command.
-    
-    Retrieves and sends a random fortune message to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /cita command."""
     text = system_commands.fortune()
     await update.message.reply_text(text)
 
@@ -178,14 +116,7 @@ async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 # =============================================================================
 
 async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /weather command.
-    
-    Retrieves and sends the current weather report to the user.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /weather command."""
     text = weather.get_weather_report()
     await update.message.reply_text(text)
 
@@ -195,27 +126,13 @@ async def weather_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 # =============================================================================
 
 async def talk_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /talk command.
-    
-    Sends a voice message response based on user input.
-    
-    Args:
-        update: Telegram update object containing the message
-        context: Context object containing bot reference
-    """
+    """Handle the /talk command."""
     text = update.message.text
     audio_file = system_commands.talk(text)
 
+
 async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Process voice messages sent by users.
-    
-    Downloads the voice file, converts it to WAV format, performs speech-to-text
-    recognition, and sends the transcribed text back to the user.
-    
-    Args:
-        update: Telegram update object containing voice message
-        context: Context object containing bot reference
-    """
+    """Process voice messages sent by users."""
     file_path = "/tmp/voice_file.ogg"
     voice_note = await context.bot.get_file(update.message.voice.file_id)
     voice_file = await voice_note.download_to_drive(file_path)
@@ -230,14 +147,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # =============================================================================
 
 async def remind_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /remind command.
-    
-    Sets a reminder for a specific time or duration based on user input.
-    
-    Args:
-        update: Telegram update object containing time and message
-        context: Context object containing bot reference
-    """
+    """Handle the /remind command."""
     text = update.message.text
     response = system_commands.reminder(text)
     await update.message.reply_text(response)
@@ -248,25 +158,10 @@ async def remind_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # =============================================================================
 
 async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /oblique command.
-    
-    Retrieves and sends a random oblique strategy card.
-    
-    Args:
-        update: Telegram update object
-        context: Context object containing bot reference
-    """
+    """Handle the /oblique command."""
     text = update.message.text
     response = system_commands.oblique()
     await update.message.reply_text(response)
-
-
-# =============================================================================
-# AI/LLM Commands
-# =============================================================================
-
-# AI/LLM Commands - now handled by llm_chat module
-# The ai_chat function provides the same functionality with conversation context
 
 
 # =============================================================================
@@ -274,14 +169,7 @@ async def oblique_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 # =============================================================================
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle non-command text messages.
-    
-    Echoes the user's message back to them.
-    
-    Args:
-        update: Telegram update object containing the message
-        context: Context object containing bot reference
-    """
+    """Handle non-command text messages."""
     await update.message.reply_text(update.message.text)
 
 
@@ -290,13 +178,17 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # =============================================================================
 
 def main() -> None:
-    """Initialize and run the Telegram bot.
-    
-    Sets up command handlers, message handlers, and voice handlers.
-    """
-    # Create the Application and pass it your bot's token.
+    """Initialize and run the Telegram bot."""
     TOKEN = os.environ.get("TOKEN")
-    application = Application.builder().token(TOKEN).build()
+    
+    # Se han ampliado los timeouts HTTP aquí para evitar fallos por latencia local del LLM
+    application = (
+        Application.builder()
+        .token(TOKEN)
+        .connect_timeout(30.0)
+        .read_timeout(30.0)
+        .build()
+    )
     
     # Command handlers
     application.add_handler(CommandHandler("start", start))
@@ -334,11 +226,9 @@ def main() -> None:
     application.add_handler(CommandHandler("ai_image", ai_image))
     application.add_handler(CommandHandler("ai_clear", ai_clear))
     application.add_handler(CommandHandler("ai_help", ai_help))
+    application.add_handler(CommandHandler("hilos", ai_threads))
     
     # Message handlers
-    # Non-command text messages - echo the message
-    #application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-    #application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_command))
     application.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, ai_chat))
     
     # Voice messages - process and transcribe
@@ -350,3 +240,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

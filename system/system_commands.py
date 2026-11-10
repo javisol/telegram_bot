@@ -7,6 +7,10 @@ import os
 from typing import Optional
 from validators import IPValidator, TimeValidator, InputValidator
 
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ob_st_file = os.path.join(BASE_DIR, "oblique_strategies", "oblique_strategies_2015.json")
+
 # Default timeout for subprocess calls
 DEFAULT_TIMEOUT = 30
 
@@ -325,9 +329,6 @@ def oblique() -> str:
     Returns:
         Random oblique strategy card text or error message
     """
-    ob_st_file = os.environ.get("OBLIQUE_STRATEGIES_FILE",
-                               "/data/repositories/telegram_bot/oblique_strategies/oblique_strategies_2015.json")
-    
     if not os.path.exists(ob_st_file):
         raise FileNotFoundError(f"Oblique strategies file not found: {ob_st_file}")
     
